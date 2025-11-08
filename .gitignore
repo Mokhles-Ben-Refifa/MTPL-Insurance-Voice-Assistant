@@ -1,0 +1,26 @@
+@'
+# Python
+__pycache__/
+*.py[cod]
+
+.venv/
+venv/
+.env
+
+
+# RAG/Vector stores & local DBs
+chroma_store/
+db/
+*.sqlite
+*.db
+
+# Local data & outputs
+data/
+outputs/
+logs/
+*.log
+
+# Models / weights / large artifacts
+*.bin
+
+
