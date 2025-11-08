@@ -54,7 +54,7 @@ IMPORTANT INSTRUCTIONS:
     ("human", "{input}")
 ])
 
-def get_rag_chain(model="gemini-1.5-flash"):
+def get_rag_chain(model="gemini-2.5-flash"):
     llm = ChatGoogleGenerativeAI(
         model=model,
         google_api_key=GOOGLE_API_KEY,
