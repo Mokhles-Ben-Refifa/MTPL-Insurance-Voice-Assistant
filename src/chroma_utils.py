@@ -2,116 +2,102 @@ from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader, Un
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
-import os
-import logging
+from langchain_core.documents import Document
+from typing import List
+import os, logging, hashlib
 
-# Set up logging to app.log in the project root
-logging.basicConfig(filename=os.path.join(os.path.dirname(__file__), "..", "app.log"), 
-                    level=logging.INFO, 
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    filename=os.path.join(os.path.dirname(__file__), "..", "app.log"),
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
-# CHANGED: Use multilingual embedding model for Hungarian/English documents
+# ---- Embeddings (multilingual) ----
 embedding_function = HuggingFaceEmbeddings(
     model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
     model_kwargs={'device': 'cpu'},
     encode_kwargs={'normalize_embeddings': True}
 )
 
-# Get the absolute path to the project root (RAG VOICE) and set persist_directory
-# Since this file is in src/, go up two levels to RAG VOICE, then into data/chroma_db
+# ---- Persist dir + named collection ----
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 persist_dir = os.path.join(project_root, "data", "chroma_db")
-logging.info(f"Setting persist directory to: {persist_dir}")
+os.makedirs(persist_dir, exist_ok=True)
+collection_name = os.getenv("CHROMA_COLLECTION", "mtpl_docs_v1_minilm12")
 
-# Ensure the directory exists and is writable
+logging.info(f"[chroma] persist_dir={persist_dir} collection={collection_name}")
+
+# write-ability check
 try:
-    if not os.path.exists(persist_dir):
-        os.makedirs(persist_dir)
-        logging.info(f"Created directory: {persist_dir}")
-    # Test write access by creating a temporary file
-    test_file = os.path.join(persist_dir, "test_write.txt")
-    with open(test_file, "w") as f:
-        f.write("Test")
-    os.remove(test_file)
-    logging.info(f"Confirmed write access to: {persist_dir}")
+    tf = os.path.join(persist_dir, ".__wtest")
+    with open(tf, "w") as f: f.write("ok")
+    os.remove(tf)
 except Exception as e:
-    logging.error(f"Failed to create or write to {persist_dir}: {str(e)}")
+    logging.error(f"[chroma] persist_dir not writable: {e}")
     raise
 
-# Initialize Chroma vector store
-vectorstore = Chroma(persist_directory=persist_dir, embedding_function=embedding_function)
-
-from typing import List
-from langchain_core.documents import Document
-
-# IMPROVED: Better chunking for insurance documents
-text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=800,  # Smaller chunks for better precision
-    chunk_overlap=150,  # Moderate overlap
-    length_function=len,
-    separators=["\n\n", "\n", ". ", " ", ""]  # Better sentence boundaries
+vectorstore = Chroma(
+    collection_name=collection_name,
+    persist_directory=persist_dir,
+    embedding_function=embedding_function
 )
 
-# Document loading and splitting
+# ---- Chunking ----
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=800,
+    chunk_overlap=150,
+    length_function=len,
+    separators=["\n\n", "\n", ". ", " ", ""]
+)
+
 def load_and_split_document(file_path: str) -> List[Document]:
-    logging.info(f"Attempting to load and split document from: {file_path}")
     if file_path.endswith('.pdf'):
         loader = PyPDFLoader(file_path)
-        logging.info("Using PyPDFLoader for PDF file")
     elif file_path.endswith('.docx'):
         loader = Docx2txtLoader(file_path)
-        logging.info("Using Docx2txtLoader for DOCX file")
     elif file_path.endswith('.html'):
         loader = UnstructuredHTMLLoader(file_path)
-        logging.info("Using UnstructuredHTMLLoader for HTML file")
     else:
-        logging.error(f"Unsupported file type: {file_path}")
         raise ValueError(f"Unsupported file type: {file_path}")
+    docs = loader.load()
+    splits = text_splitter.split_documents(docs)
+    logging.info(f"[index] {file_path}: pages={len(docs)} -> chunks={len(splits)}")
+    return splits
 
-    documents = loader.load()
-    logging.info(f"Loaded {len(documents)} document(s) from {file_path}")
-    split_docs = text_splitter.split_documents(documents)
-    logging.info(f"Split into {len(split_docs)} chunks")
-    return split_docs
+def _stable_id(filename: str, page: int | None, i: int, text: str) -> str:
+    h = hashlib.md5(text.encode("utf-8")).hexdigest()[:16]
+    return f"{filename}::p{page if page is not None else -1}::i{i}::{h}"
 
-# Indexing documents
-# In your index_document_to_chroma function, update the metadata section:
-
-def index_document_to_chroma(file_path: str, file_id: int) -> bool:
+# NOTE: added original_filename for clean metadata/citations
+def index_document_to_chroma(file_path: str, file_id: str, original_filename: str | None = None) -> bool:
     try:
-        logging.info(f"Starting indexing process for file: {file_path} with file_id: {file_id}")
         splits = load_and_split_document(file_path)
-        logging.info(f"Loaded and split {len(splits)} document chunks")
+        meta_filename = original_filename or os.path.basename(file_path)
 
-        # IMPROVED: Add more metadata to each split
-        filename = os.path.basename(file_path)  # ADD THIS
-        for split in splits:
-            split.metadata['file_id'] = file_id
-            split.metadata['source'] = file_path      # ADD THIS
-            split.metadata['filename'] = filename     # ADD THIS
-            logging.debug(f"Added metadata file_id={file_id} to chunk: {split.page_content[:50]}...")
+        ids = []
+        for i, s in enumerate(splits):
+            s.metadata["file_id"] = file_id
+            s.metadata["source"] = file_path
+            s.metadata["filename"] = meta_filename
+            ids.append(_stable_id(meta_filename, s.metadata.get("page"), i, s.page_content))
 
-        logging.info(f"Adding {len(splits)} documents to Chroma vector store")
-        vectorstore.add_documents(splits)
-        logging.info(f"Successfully indexed {len(splits)} documents to Chroma")
-        logging.info(f"Chroma collection count after indexing: {vectorstore._collection.count()}")
+        vectorstore.add_documents(splits, ids=ids)
+        try: vectorstore.persist()
+        except Exception: pass
+
+        logging.info(f"[index] added={len(splits)} total={vectorstore._collection.count()}")
         return True
     except Exception as e:
-        logging.error(f"Error indexing document {file_path}: {str(e)}")
+        logging.error(f"[index] error {file_path}: {e}")
         return False
 
-# Deleting documents
-def delete_doc_from_chroma(file_id: int):
+def delete_doc_from_chroma(file_id: str) -> bool:
     try:
-        logging.info(f"Attempting to delete documents with file_id: {file_id}")
-        docs = vectorstore.get(where={"file_id": file_id})
-        logging.info(f"Found {len(docs['ids'])} document chunks for file_id {file_id}")
-
         vectorstore._collection.delete(where={"file_id": file_id})
-        logging.info(f"Deleted all instances with file_id {file_id}")
-        logging.info(f"Chroma collection count after deletion: {vectorstore._collection.count()}")
-
+        try: vectorstore.persist()
+        except Exception: pass
+        logging.info(f"[delete] file_id={file_id} total={vectorstore._collection.count()}")
         return True
     except Exception as e:
-        logging.error(f"Error deleting document with file_id {file_id} from Chroma: {str(e)}")
+        logging.error(f"[delete] error file_id={file_id}: {e}")
         return False
