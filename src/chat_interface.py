@@ -326,7 +326,19 @@ def display_chat_interface():
             st.markdown(prompt)
 
         with st.spinner("Generating response..."):
-            resp = get_api_response(prompt, st.session_state.session_id, st.session_state.model)
+            WINDOW_MESSAGES = 6  # 3 user+assistant turns
+            history_payload = [
+                {"role": m["role"], "content": m["content"]}
+                for m in st.session_state.messages[-WINDOW_MESSAGES:]
+            ]
+
+            resp = get_api_response(
+                prompt,
+                st.session_state.session_id,
+                model=st.session_state.model,
+                history=history_payload,   # omit this if your server stores history by session_id
+            )
+
 
         if resp:
             st.session_state.session_id = resp.get("session_id")
@@ -343,20 +355,6 @@ def display_chat_interface():
                         if audio_bytes:
                             st.audio(audio_bytes, format='audio/mp3', autoplay=True)
 
-            with st.expander("📊 Details", expanded=False):
-                if raw_transcript is not None:
-                    st.subheader("ASR (raw)")
-                    st.code(raw_transcript)
-                if corrected_transcript is not None:
-                    st.subheader("ASR (corrected by LLM)")
-                    st.code(corrected_transcript)
-
-                st.subheader("Generated Answer")
-                st.code(resp.get("answer", ""))
-                st.subheader("Model Used")
-                st.code(resp.get("model", st.session_state.model))
-                st.subheader("Session ID")
-                st.code(resp.get("session_id", ""))
                 
                 if st.session_state.audio_enabled:
                     st.subheader("Audio Output")
