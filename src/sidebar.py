@@ -57,110 +57,152 @@ def _new_chat() -> None:
     sid = create_session()
     _open_session(sid)
 
-# ---------- Enhanced Professional Styling ----------
+# ---------- Modern Professional Styling ----------
 SIDEBAR_CSS = """
 <style>
-/* Sidebar background and spacing */
+/* Sidebar base styling with subtle gradient */
 [data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%);
+    background: linear-gradient(180deg, #fafbfc 0%, #ffffff 100%);
 }
-
 [data-testid="stSidebar"] > div {
-    padding: 1.5rem 1rem;
+    padding: 1.25rem 0.9rem;
 }
 
-/* Section titles - more refined */
+/* Section titles - minimalist and elegant */
 .sidebar-section-title {
-    font-size: 0.75rem;
-    font-weight: 600;
+    font-size: 0.7rem;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #6b7280;
-    margin: 1.5rem 0 0.75rem 0;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid #e5e7eb;
+    letter-spacing: 0.1em;
+    color: #8b92a8;
+    margin: 1.5rem 0 0.7rem 0.15rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 2px solid #e8eaf0;
+    position: relative;
 }
-
-.sidebar-section-title:first-child {
-    margin-top: 0;
+.sidebar-section-title::before {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 40px;
+    height: 2px;
+    background: linear-gradient(90deg, #667eea, #764ba2);
 }
+.sidebar-section-title:first-child { margin-top: 0; }
 
-/* New Chat Button - Primary action style */
+/* New Chat Button - Primary CTA with icon */
 .new-chat-btn .stButton > button {
     width: 100%;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     border: none;
-    border-radius: 10px;
+    border-radius: 12px;
     padding: 0.75rem 1rem;
     font-weight: 600;
     font-size: 0.95rem;
-    box-shadow: 0 4px 6px rgba(102, 126, 234, 0.25);
-    transition: all 0.2s ease;
+    box-shadow: 0 4px 14px rgba(102, 126, 234, 0.3);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     margin-bottom: 1rem;
-}
-
-.new-chat-btn .stButton > button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(102, 126, 234, 0.35);
-}
-
-/* Chat list container */
-.chat-list-container {
-    max-height: 400px;
-    overflow-y: auto;
-    padding-right: 4px;
-}
-
-/* Custom scrollbar */
-.chat-list-container::-webkit-scrollbar {
-    width: 6px;
-}
-
-.chat-list-container::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 10px;
-}
-
-.chat-list-container::-webkit-scrollbar-thumb {
-    background: #d1d5db;
-    border-radius: 10px;
-}
-
-.chat-list-container::-webkit-scrollbar-thumb:hover {
-    background: #9ca3af;
-}
-
-/* Chat row layout */
-.chat-row {
-    display: flex;
-    gap: 6px;
-    align-items: stretch;
-    margin-bottom: 0.5rem;
-}
-
-/* Chat card design */
-.chat-row .stButton > button {
-    width: 100%;
-    text-align: left;
-    border-radius: 10px;
-    border: 1px solid #e5e7eb;
-    background: #ffffff;
-    padding: 0.85rem 1rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-    transition: all 0.2s ease;
-    white-space: pre-line;
     position: relative;
     overflow: hidden;
 }
-
-/* Active chat - elegant accent */
-.chat-row.active .stButton > button {
-    background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%);
-    border: 1px solid #667eea;
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+.new-chat-btn .stButton > button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+}
+.new-chat-btn .stButton > button:hover::before {
+    left: 100%;
+}
+.new-chat-btn .stButton > button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
 }
 
+/* Chat list container - smooth scrolling */
+.chat-list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 420px;
+    overflow-y: auto;
+    padding-right: 6px;
+    margin-top: 0.5rem;
+}
+.chat-list-container > div {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+}
+.chat-list-container .stContainer {
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* Custom scrollbar - refined */
+.chat-list-container::-webkit-scrollbar { width: 5px; }
+.chat-list-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+.chat-list-container::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #d1d5db, #9ca3af);
+    border-radius: 10px;
+}
+.chat-list-container::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #9ca3af, #6b7280);
+}
+
+/* Chat row - clean flex layout */
+.chat-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 !important;
+    padding: 0 !important;
+    transition: all 0.2s ease;
+}
+.chat-row > div {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.chat-row .stColumns {
+    gap: 6px !important;
+}
+.chat-row [data-testid="column"] {
+    padding: 0 !important;
+}
+
+/* Chat card - modern card design */
+.chat-row .stButton > button {
+    width: 100%;
+    text-align: left;
+    border-radius: 11px;
+    border: 1.5px solid #e8eaf0;
+    background: #ffffff;
+    padding: 9px 11px;
+    min-height: 38px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: pre-line;
+    position: relative;
+    overflow: hidden;
+    font-size: 0.875rem;
+    line-height: 1.35;
+    margin: 0 !important;
+}
+
+/* Active chat - vibrant accent */
+.chat-row.active .stButton > button {
+    background: linear-gradient(135deg, #f5f7ff 0%, #eef1ff 100%);
+    border: 1.5px solid #667eea;
+    box-shadow: 0 3px 10px rgba(102, 126, 234, 0.2);
+    transform: translateX(3px);
+}
 .chat-row.active .stButton > button::before {
     content: '';
     position: absolute;
@@ -169,190 +211,230 @@ SIDEBAR_CSS = """
     bottom: 0;
     width: 4px;
     background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+    box-shadow: 2px 0 8px rgba(102, 126, 234, 0.3);
 }
 
-/* Hover effect */
+/* Hover effect - subtle lift */
 .chat-row .stButton > button:hover {
-    border-color: #d1d5db;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border-color: #c7cde0;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
     transform: translateX(2px);
+    background: #fafbff;
 }
 
-/* Chat text styling */
+/* Chat text - typography refinement */
 .chat-title {
     display: block;
     font-weight: 600;
     font-size: 0.9rem;
-    color: #1f2937;
-    margin-bottom: 0.25rem;
-    line-height: 1.3;
+    color: #2d3748;
+    margin-bottom: 0.2rem;
+    line-height: 1.35;
 }
-
 .chat-preview {
     display: block;
-    font-size: 0.8rem;
-    color: #6b7280;
+    font-size: 0.78rem;
+    color: #718096;
     line-height: 1.4;
+    opacity: 0.9;
 }
 
-/* Delete button - hidden by default */
+/* Delete button - elegant hover reveal */
 .chat-row .del-wrap {
     opacity: 0;
-    transition: opacity 0.2s ease;
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
 }
-
-.chat-row:hover .del-wrap {
-    opacity: 1;
-}
-
+.chat-row:hover .del-wrap { opacity: 1; }
 .chat-row .del-wrap .stButton > button {
-    padding: 0.85rem 0.6rem;
+    padding: 7px;
+    min-height: 38px;
+    width: 38px;
+    height: 38px;
     border-radius: 10px;
-    border: 1px solid #fee2e2;
+    border: 1.5px solid #fee2e2;
     background: #ffffff;
     color: #ef4444;
-    min-width: 42px;
-    transition: all 0.2s ease;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 3px rgba(239, 68, 68, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 !important;
 }
-
 .chat-row .del-wrap .stButton > button:hover {
     background: #fef2f2;
-    border-color: #fecaca;
-    transform: scale(1.05);
+    border-color: #fca5a5;
+    transform: scale(1.08) rotate(5deg);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
 }
 
-/* Upload section */
+/* Upload section - modern drop zone */
 .upload-section {
-    background: #ffffff;
-    border: 2px dashed #d1d5db;
-    border-radius: 12px;
-    padding: 1.25rem;
-    margin: 0.75rem 0;
-    transition: all 0.2s ease;
+    background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+    border: 2px dashed #c7cde0;
+    border-radius: 14px;
+    padding: 1.2rem;
+    margin: 0.7rem 0;
+    transition: all 0.3s ease;
+    position: relative;
 }
-
+.upload-section::before {
+    content: '📎';
+    position: absolute;
+    top: 0.8rem;
+    right: 0.8rem;
+    font-size: 1.5rem;
+    opacity: 0.15;
+}
 .upload-section:hover {
     border-color: #667eea;
-    background: #fafbff;
+    background: linear-gradient(135deg, #fafbff 0%, #f5f7ff 100%);
+    box-shadow: 0 2px 12px rgba(102, 126, 234, 0.1);
 }
-
-.upload-section .stFileUploader {
-    padding: 0;
-}
-
+.upload-section .stFileUploader { padding: 0; }
 .upload-section .stFileUploader > div {
     border: none !important;
     background: transparent !important;
 }
 
-/* Upload button */
+/* Upload button - secondary action */
 .upload-btn .stButton > button {
     width: 100%;
-    background: #667eea;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     border: none;
-    border-radius: 8px;
+    border-radius: 10px;
     padding: 0.65rem 1rem;
     font-weight: 600;
     font-size: 0.9rem;
-    transition: all 0.2s ease;
+    transition: all 0.25s ease;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.25);
 }
-
 .upload-btn .stButton > button:hover {
-    background: #5568d3;
-    transform: translateY(-1px);
+    background: linear-gradient(135deg, #5568d3 0%, #6a3d93 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 14px rgba(102, 126, 234, 0.35);
 }
 
-/* Documents section */
+/* Documents section - organized list */
 .doc-list-container {
     max-height: 300px;
     overflow-y: auto;
+    padding-right: 4px;
 }
-
 .doc-row {
     display: flex;
     gap: 8px;
     align-items: center;
-    padding: 0.7rem 0.85rem;
+    padding: 0.7rem 0.9rem;
     margin-bottom: 0.5rem;
     background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    transition: all 0.2s ease;
+    border: 1.5px solid #e8eaf0;
+    border-radius: 10px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
 .doc-row:hover {
-    background: #f9fafb;
-    border-color: #d1d5db;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    background: linear-gradient(135deg, #fafbff 0%, #f9fafb 100%);
+    border-color: #c7cde0;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+    transform: translateX(2px);
 }
-
 .doc-row .doc-name {
     flex: 1;
-    font-size: 0.875rem;
-    color: #374151;
+    font-size: 0.86rem;
+    color: #2d3748;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     font-weight: 500;
 }
-
 .doc-row .stButton > button {
-    padding: 0.4rem 0.55rem;
-    border-radius: 6px;
-    border: 1px solid #fee2e2;
+    padding: 0.45rem 0.6rem;
+    border-radius: 8px;
+    border: 1.5px solid #fee2e2;
     background: #ffffff;
     color: #ef4444;
     min-width: 36px;
     font-size: 0.85rem;
     transition: all 0.2s ease;
 }
-
 .doc-row .stButton > button:hover {
     background: #fef2f2;
-    border-color: #fecaca;
-    transform: scale(1.05);
+    border-color: #fca5a5;
+    transform: scale(1.08) rotate(5deg);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
 }
 
-/* Refresh button */
+/* Refresh button - subtle utility action */
 .refresh-btn .stButton > button {
     width: 100%;
-    background: #f3f4f6;
+    background: linear-gradient(135deg, #f7f8fa 0%, #ffffff 100%);
     color: #6b7280;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
+    border: 1.5px solid #e8eaf0;
+    border-radius: 10px;
     padding: 0.6rem 1rem;
     font-weight: 500;
-    font-size: 0.875rem;
-    transition: all 0.2s ease;
-    margin-bottom: 0.75rem;
+    font-size: 0.87rem;
+    transition: all 0.25s ease;
+    margin-bottom: 0.7rem;
 }
-
 .refresh-btn .stButton > button:hover {
-    background: #e5e7eb;
+    background: linear-gradient(135deg, #f3f4f6 0%, #f9fafb 100%);
     color: #374151;
+    border-color: #c7cde0;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
-/* Divider */
+/* Divider - minimal and clean */
 hr {
     margin: 1.5rem 0;
     border: none;
-    border-top: 1px solid #e5e7eb;
+    border-top: 2px solid #e8eaf0;
     opacity: 1;
 }
 
-/* Empty state messages */
+/* Empty state - friendly messaging */
 [data-testid="stSidebar"] .stCaption {
     text-align: center;
-    color: #9ca3af;
+    color: #a0aec0;
     font-style: italic;
-    padding: 1rem 0;
+    padding: 1rem 0.5rem;
+    font-size: 0.85rem;
+    background: linear-gradient(135deg, #fafbfc 0%, #f9fafb 100%);
+    border-radius: 10px;
+    border: 1.5px dashed #e8eaf0;
+    margin: 0.5rem 0;
 }
 
-/* Success/info messages */
+/* Success/info messages - polished notifications */
 [data-testid="stSidebar"] .stSuccess {
-    border-radius: 8px;
+    border-radius: 10px;
     font-size: 0.85rem;
+    background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+    border: 1.5px solid #86efac;
+    padding: 0.6rem 0.9rem;
+    box-shadow: 0 2px 8px rgba(134, 239, 172, 0.15);
+}
+
+/* Animation for new elements */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.chat-row, .doc-row {
+    animation: slideIn 0.3s ease-out;
 }
 </style>
 """
@@ -380,7 +462,7 @@ def display_sidebar() -> None:
 def _render_chat_list() -> None:
     st.sidebar.markdown('<div class="sidebar-section-title">Conversations</div>', unsafe_allow_html=True)
 
-    # New chat button with primary styling
+    # New chat button with enhanced styling
     with st.sidebar.container():
         st.markdown('<div class="new-chat-btn">', unsafe_allow_html=True)
         if st.button("✨ New Chat", use_container_width=True):
@@ -388,35 +470,32 @@ def _render_chat_list() -> None:
         st.markdown("</div>", unsafe_allow_html=True)
 
     sessions = get_sessions()
-
     if not sessions:
-        st.sidebar.caption("No conversations yet. Start a new chat!")
+        st.sidebar.caption("💬 No conversations yet. Start your first chat!")
         return
 
     current = st.session_state.get("session_id")
 
     # Scrollable chat list container
     st.sidebar.markdown('<div class="chat-list-container">', unsafe_allow_html=True)
-    
+
     for s in sessions:
         title = (s.get("title") or "").strip()
-        
+
         # Remove common prefixes
         for prefix in ["New chat", "Untitled Chat", "new chat", "untitled chat", "New Conversation", "new conversation"]:
             if title.startswith(prefix):
                 title = title[len(prefix):].strip()
                 break
-        
-        # If empty, just skip showing title
-        if not title:
-            title = ""
-        
+
+        title = title or "💬 Chat"
+
         preview = (s.get("last_message") or "").strip()
-        if len(preview) > 70:
-            preview = preview[:67] + "..."
-        
-        # Build simple text label (buttons don't support HTML)
-        label = f"💬 {title}"
+        if len(preview) > 65:
+            preview = preview[:62] + "..."
+
+        # Build label
+        label = title
         if preview:
             label += f"\n{preview}"
 
@@ -426,7 +505,11 @@ def _render_chat_list() -> None:
         with st.sidebar.container():
             st.markdown(f'<div class="{row_class}">', unsafe_allow_html=True)
 
-            c_open, c_del = st.columns([1, 0.15])
+            # Center-align delete button with chat card
+            try:
+                c_open, c_del = st.columns([0.85, 0.15], vertical_alignment="center")
+            except TypeError:
+                c_open, c_del = st.columns([0.85, 0.15])
 
             with c_open:
                 if st.button(label, key=f"open_{s['id']}", use_container_width=True):
@@ -447,17 +530,17 @@ def _render_chat_list() -> None:
                 st.markdown("</div>", unsafe_allow_html=True)
 
             st.markdown("</div>", unsafe_allow_html=True)
-    
+
     st.sidebar.markdown("</div>", unsafe_allow_html=True)
 
 def _render_model_and_docs() -> None:
-    st.sidebar.markdown('<div class="sidebar-section-title">Upload Documents</div>', unsafe_allow_html=True)
+    st.sidebar.markdown('<div class="sidebar-section-title">📤 Upload Documents</div>', unsafe_allow_html=True)
 
     # Upload section with enhanced styling
     with st.sidebar.container():
         st.markdown('<div class="upload-section">', unsafe_allow_html=True)
         uploaded_file = st.file_uploader(
-            "Drop file here or browse",
+            "Drop files or browse",
             type=["pdf", "docx", "html"],
             label_visibility="visible"
         )
@@ -466,7 +549,7 @@ def _render_model_and_docs() -> None:
     if uploaded_file:
         with st.sidebar.container():
             st.markdown('<div class="upload-btn">', unsafe_allow_html=True)
-            if st.button("📤 Upload", use_container_width=True):
+            if st.button("📤 Upload Document", use_container_width=True):
                 with st.spinner("Uploading document..."):
                     upload_response = upload_document(uploaded_file)
                     if upload_response:
@@ -476,12 +559,12 @@ def _render_model_and_docs() -> None:
             st.markdown("</div>", unsafe_allow_html=True)
 
     st.sidebar.divider()
-    st.sidebar.markdown('<div class="sidebar-section-title">Document Library</div>', unsafe_allow_html=True)
+    st.sidebar.markdown('<div class="sidebar-section-title">📚 Document Library</div>', unsafe_allow_html=True)
 
     # Refresh button
     with st.sidebar.container():
         st.markdown('<div class="refresh-btn">', unsafe_allow_html=True)
-        if st.button("🔄 Refresh", use_container_width=True):
+        if st.button("🔄 Refresh Library", use_container_width=True):
             st.session_state.documents = list_documents()
             st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
@@ -497,12 +580,12 @@ def _render_model_and_docs() -> None:
             pass
 
     if not docs:
-        st.sidebar.caption("No documents uploaded yet.")
+        st.sidebar.caption("📂 No documents uploaded yet.")
         return
 
     # Scrollable document list
     st.sidebar.markdown('<div class="doc-list-container">', unsafe_allow_html=True)
-    
+
     for doc in docs:
         with st.sidebar.container():
             st.markdown('<div class="doc-row">', unsafe_allow_html=True)
@@ -514,5 +597,5 @@ def _render_model_and_docs() -> None:
                     st.session_state.documents = list_documents()
                     st.rerun()
             st.markdown("</div>", unsafe_allow_html=True)
-    
+
     st.sidebar.markdown("</div>", unsafe_allow_html=True)

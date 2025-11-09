@@ -28,15 +28,15 @@ DEBUG_CLEANUP = os.getenv("DEBUG_CLEANUP", "0").strip() not in {"0", "false", "F
 
 # ===================== Utilities =====================
 
-def audio_input_compat(label: str):
+def audio_input_compat(label: str, key: str = None):
     """
     Backward-compatible wrapper for st.audio_input:
     Uses sample_rate=16000 only if the current Streamlit supports it.
     """
     sig = inspect.signature(st.audio_input)
     if "sample_rate" in sig.parameters:
-        return st.audio_input(label, sample_rate=16000)
-    return st.audio_input(label)
+        return st.audio_input(label, sample_rate=16000, key=key)
+    return st.audio_input(label, key=key)
 
 
 def transcribe_audio_value(audio_value, language=ASR_LANG) -> str | None:
@@ -221,20 +221,29 @@ def display_chat_interface():
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
 
+    # ---- Initialize variables ----
     prompt = None
     raw_transcript = None
     corrected_transcript = None
 
-    # ---- Mic capture ----
-    audio_value = audio_input_compat("🎙️ Record a voice message")
+    # ---- Voice input in a compact popover ----
+    with st.popover("🎤", use_container_width=False):
+        st.caption("Record your message")
+        audio_value = audio_input_compat("Press to record", key="voice_input")
+        
+        if audio_value is not None:
+            st.success("✓ Audio recorded")
+            if st.button("🎧 Play recording"):
+                st.audio(audio_value)
+
+    # ---- Process audio ----
     if audio_value is not None:
-        st.audio(audio_value)
-        with st.spinner("Transcribing audio..."):
+        with st.spinner("🎙️ Processing audio..."):
             raw_transcript = transcribe_audio_value(audio_value, language=ASR_LANG)
 
         if raw_transcript:
             if LLM_CLEANUP_ENABLED:
-                with st.spinner("Cleaning up your transcript..."):
+                with st.spinner("✨ Refining..."):
                     corrected_transcript = correct_prompt_with_llm(
                         raw_text=raw_transcript,
                         model_name=st.session_state.model,
@@ -268,7 +277,7 @@ def display_chat_interface():
             with st.chat_message("assistant"):
                 st.markdown(answer)
 
-            with st.expander("Details"):
+            with st.expander("📊 Details", expanded=False):
                 if raw_transcript is not None:
                     st.subheader("ASR (raw)")
                     st.code(raw_transcript)
