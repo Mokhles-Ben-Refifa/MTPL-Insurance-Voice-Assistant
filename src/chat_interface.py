@@ -9,6 +9,10 @@ from dotenv import load_dotenv
 
 from src.api_utils import get_api_response
 
+# --- TTS (Text-to-Speech) ---
+from gtts import gTTS
+import tempfile
+
 # --- LLM (Gemini via LangChain) for transcript cleanup ---
 from pydantic import BaseModel, Field
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -22,6 +26,8 @@ DEFAULT_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.1"))
 
 # ======== No-sidebar defaults (configurable via environment) ========
 ASR_LANG = os.getenv("ASR_LANG", "en-US")
+TTS_LANG = os.getenv("TTS_LANG", "en")  # Language for TTS output
+TTS_ENABLED = os.getenv("TTS_ENABLED", "1").strip() not in {"0", "false", "False", ""}
 LLM_CLEANUP_ENABLED = os.getenv("LLM_CLEANUP_ENABLED", "1").strip() not in {"0", "false", "False", ""}
 DEBUG_CLEANUP = os.getenv("DEBUG_CLEANUP", "0").strip() not in {"0", "false", "False", ""}
 
@@ -53,6 +59,44 @@ def transcribe_audio_value(audio_value, language=ASR_LANG) -> str | None:
         return "(Sorry, I couldn't understand the audio.)"
     except Exception as e:
         st.error(f"ASR error: {e}")
+        return None
+
+
+def text_to_speech(text: str, lang: str = TTS_LANG) -> bytes | None:
+    """
+    Convert text to speech using gTTS (Google Text-to-Speech).
+    Returns audio bytes or None on error.
+    """
+    try:
+        # Create a gTTS object
+        tts = gTTS(text=text, lang=lang, slow=False)
+        
+        # Save to a temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as fp:
+            temp_path = fp.name
+        
+        # Save TTS audio to temp file
+        tts.save(temp_path)
+        
+        # Read the audio file
+        with open(temp_path, 'rb') as audio_file:
+            audio_bytes = audio_file.read()
+        
+        # Clean up temp file (with retry for Windows)
+        try:
+            os.unlink(temp_path)
+        except PermissionError:
+            # File still in use on Windows, try again after small delay
+            import time
+            time.sleep(0.1)
+            try:
+                os.unlink(temp_path)
+            except:
+                pass  # If still can't delete, OS will clean it up later
+            
+        return audio_bytes
+    except Exception as e:
+        st.error(f"TTS error: {e}")
         return None
 
 
@@ -215,6 +259,8 @@ def display_chat_interface():
         st.session_state.session_id = None
     if "model" not in st.session_state:
         st.session_state.model = DEFAULT_MODEL
+    if "audio_enabled" not in st.session_state:
+        st.session_state.audio_enabled = TTS_ENABLED
 
     # ---- Render history ----
     for m in st.session_state.messages:
@@ -226,15 +272,28 @@ def display_chat_interface():
     raw_transcript = None
     corrected_transcript = None
 
-    # ---- Voice input in a compact popover ----
-    with st.popover("🎤", use_container_width=False):
-        st.caption("Record your message")
-        audio_value = audio_input_compat("Press to record", key="voice_input")
-        
-        if audio_value is not None:
-            st.success("✓ Audio recorded")
-            if st.button("🎧 Play recording"):
-                st.audio(audio_value)
+    # ---- Voice input + Audio toggle in a compact layout ----
+    col1, col2 = st.columns([0.1, 0.9])
+    
+    with col1:
+        # Voice input popover
+        with st.popover("🎙️", use_container_width=False):
+            st.caption("Record your message")
+            audio_value = audio_input_compat("Press to record", key="voice_input")
+            
+            if audio_value is not None:
+                st.success("✓ Audio recorded")
+                if st.button("🎧 Play recording"):
+                    st.audio(audio_value)
+    
+    with col2:
+        # Audio output toggle
+        audio_toggle = st.checkbox(
+            "🔊 Enable audio responses",
+            value=st.session_state.audio_enabled,
+            key="audio_toggle"
+        )
+        st.session_state.audio_enabled = audio_toggle
 
     # ---- Process audio ----
     if audio_value is not None:
@@ -276,6 +335,13 @@ def display_chat_interface():
 
             with st.chat_message("assistant"):
                 st.markdown(answer)
+                
+                # ---- Generate and play audio response ----
+                if st.session_state.audio_enabled and answer:
+                    with st.spinner("🔊 Generating audio..."):
+                        audio_bytes = text_to_speech(answer, lang=TTS_LANG)
+                        if audio_bytes:
+                            st.audio(audio_bytes, format='audio/mp3', autoplay=True)
 
             with st.expander("📊 Details", expanded=False):
                 if raw_transcript is not None:
@@ -291,5 +357,9 @@ def display_chat_interface():
                 st.code(resp.get("model", st.session_state.model))
                 st.subheader("Session ID")
                 st.code(resp.get("session_id", ""))
+                
+                if st.session_state.audio_enabled:
+                    st.subheader("Audio Output")
+                    st.caption("✓ Audio response enabled")
         else:
             st.error("Failed to get a response from the API.")
