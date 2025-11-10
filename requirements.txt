@@ -16,7 +16,10 @@ transformers==4.51.3
 pypdf==5.4.0
 docx2txt==0.9
 unstructured==0.17.2
-speechrecognition
+SpeechRecognition==3.10.4
+gTTS==2.5.3
+rank-bm25==0.2.2
+langfuse==2.57.2
 python-dotenv==1.1.0
 requests==2.32.3
 pydantic==2.11.3
