@@ -1,4 +1,3 @@
-# sidebar.py
 import streamlit as st
 from typing import Optional
 from src.api_utils import upload_document, list_documents, delete_document
@@ -6,8 +5,6 @@ from src.db_utils import (
     get_sessions, create_session,
     delete_session_and_logs, get_chat_history, initialize_database
 )
-
-# ---------- URL param helpers (support old/new Streamlit) ----------
 def _get_sid_from_url() -> Optional[str]:
     qp = getattr(st, "query_params", None)
     if qp is not None:
@@ -59,7 +56,7 @@ def _new_chat() -> None:
     _open_session(sid)
 
 # ---------- Styling (sessions + documents share the SAME row/card CSS) ----------
-# sidebar.py (Updated CSS section only)
+
 
 SIDEBAR_CSS = """
 <style>
@@ -286,7 +283,6 @@ hr {
 """
 
 def display_sidebar() -> None:
-    # one-time DB init
     if not st.session_state.get("db_initialized"):
         try:
             initialize_database()
@@ -294,7 +290,6 @@ def display_sidebar() -> None:
             pass
         st.session_state["db_initialized"] = True
 
-    # CSS inject once
     if not st.session_state.get("sidebar_css_injected"):
         st.sidebar.markdown(SIDEBAR_CSS, unsafe_allow_html=True)
         st.session_state["sidebar_css_injected"] = True
@@ -307,8 +302,6 @@ def display_sidebar() -> None:
 # ---------- Sidebar UI blocks ----------
 def _render_chat_list() -> None:
     st.sidebar.markdown('<div class="sidebar-section-title">Conversations</div>', unsafe_allow_html=True)
-
-    # New chat button
     with st.sidebar.container():
         st.markdown('<div class="new-chat-btn">', unsafe_allow_html=True)
         if st.button("✨ New Chat", use_container_width=True):
@@ -365,8 +358,6 @@ def _render_chat_list() -> None:
 
 def _render_model_and_docs() -> None:
     st.sidebar.markdown('<div class="sidebar-section-title">📤 Upload Documents</div>', unsafe_allow_html=True)
-
-    # Upload section
     with st.sidebar.container():
         st.markdown('<div class="upload-section">', unsafe_allow_html=True)
         uploaded_file = st.file_uploader(
@@ -408,15 +399,10 @@ def _render_model_and_docs() -> None:
     if not docs:
         st.sidebar.caption("📂 No documents uploaded yet.")
         return
-
-    # Selected doc state (for active highlight)
     selected_doc_id = st.session_state.get("selected_doc_id")
-
-    # Document list rendered with the SAME row system as chats
     st.sidebar.markdown('<div class="row-list">', unsafe_allow_html=True)
 
     for doc in docs:
-        # Build label (truncate like chats)
         fname = doc["filename"].strip()
         if len(fname) > 65:
             fname = fname[:62] + "..."

@@ -26,8 +26,6 @@ os.makedirs(persist_dir, exist_ok=True)
 collection_name = os.getenv("CHROMA_COLLECTION", "mtpl_docs_v1_minilm12")
 
 logging.info(f"[chroma] persist_dir={persist_dir} collection={collection_name}")
-
-# write-ability check
 try:
     tf = os.path.join(persist_dir, ".__wtest")
     with open(tf, "w") as f: f.write("ok")
@@ -68,7 +66,6 @@ def _stable_id(filename: str, page: int | None, i: int, text: str) -> str:
     h = hashlib.md5(text.encode("utf-8")).hexdigest()[:16]
     return f"{filename}::p{page if page is not None else -1}::i{i}::{h}"
 
-# NOTE: added original_filename for clean metadata/citations
 def index_document_to_chroma(file_path: str, file_id: str, original_filename: str | None = None) -> bool:
     try:
         splits = load_and_split_document(file_path)

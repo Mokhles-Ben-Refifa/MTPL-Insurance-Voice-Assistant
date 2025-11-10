@@ -88,10 +88,13 @@ def chat(query_input: QueryInput):
     chat_history = get_chat_history(session_id)
     rag_chain = _get_chain_cached(query_input.model.value)
 
-    result = rag_chain.invoke({
-        "input": query_input.question,
-        "chat_history": chat_history
-    })
+    result = rag_chain.invoke(
+        {"input": query_input.question, "chat_history": chat_history},
+        config={
+            "tags": ["api", "rag", os.getenv("RETRIEVER_MODE", "dense")],
+            "metadata": {"session_id": session_id, "model": query_input.model.value},
+        },
+    )
     answer = result.get("answer", "")
 
     insert_application_logs(session_id, query_input.question, answer, query_input.model.value)

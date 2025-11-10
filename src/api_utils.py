@@ -11,17 +11,17 @@ def get_api_response(
     question,
     session_id,
     model="gemini-2.5-flash",
-    history=None,           # <-- optional short history window
-    timeout=20,             # <-- avoid hanging calls
+    history=None,           
+    timeout=20,            
 ):
     data = {"question": question, "model": model}
     if session_id:
         data["session_id"] = session_id
     if history:
-        data["history"] = history  # e.g., [{"role": "user","content":"..."}, {"role":"assistant","content":"..."}]
+        data["history"] = history  
 
     try:
-        # Robust session with retries on transient errors
+       
         s = requests.Session()
         retries = Retry(
             total=2, backoff_factor=0.5,
@@ -38,7 +38,7 @@ def get_api_response(
     except requests.Timeout:
         st.error("API request timed out. Try again or check the server.")
     except requests.HTTPError as e:
-        # Show server message if present
+        
         try:
             err_text = e.response.text
         except Exception:

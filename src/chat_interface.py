@@ -26,7 +26,7 @@ DEFAULT_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.1"))
 
 # ======== No-sidebar defaults (configurable via environment) ========
 ASR_LANG = os.getenv("ASR_LANG", "en-US")
-TTS_LANG = os.getenv("TTS_LANG", "en")  # Language for TTS output
+TTS_LANG = os.getenv("TTS_LANG", "en")  
 TTS_ENABLED = os.getenv("TTS_ENABLED", "1").strip() not in {"0", "false", "False", ""}
 LLM_CLEANUP_ENABLED = os.getenv("LLM_CLEANUP_ENABLED", "1").strip() not in {"0", "false", "False", ""}
 DEBUG_CLEANUP = os.getenv("DEBUG_CLEANUP", "0").strip() not in {"0", "false", "False", ""}
@@ -68,32 +68,22 @@ def text_to_speech(text: str, lang: str = TTS_LANG) -> bytes | None:
     Returns audio bytes or None on error.
     """
     try:
-        # Create a gTTS object
+
         tts = gTTS(text=text, lang=lang, slow=False)
-        
-        # Save to a temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as fp:
             temp_path = fp.name
-        
-        # Save TTS audio to temp file
         tts.save(temp_path)
-        
-        # Read the audio file
         with open(temp_path, 'rb') as audio_file:
             audio_bytes = audio_file.read()
-        
-        # Clean up temp file (with retry for Windows)
         try:
             os.unlink(temp_path)
         except PermissionError:
-            # File still in use on Windows, try again after small delay
             import time
             time.sleep(0.1)
             try:
                 os.unlink(temp_path)
             except:
-                pass  # If still can't delete, OS will clean it up later
-            
+                pass    
         return audio_bytes
     except Exception as e:
         st.error(f"TTS error: {e}")
@@ -111,7 +101,7 @@ def cheap_cleanup(text: str) -> str:
     text = re.sub(fillers, "", text, flags=re.IGNORECASE)
     text = re.sub(r"\s+", " ", text).strip()
 
-    # If looks like a question, ensure punctuation
+    
     if re.match(r"(?i)^(who|what|when|where|why|how|which|do|does|did|is|are|can|could|should|would|may)\b", text):
         if not text.endswith((".", "?", "!")):
             text += "?"
@@ -155,7 +145,6 @@ def correct_prompt_with_llm(raw_text: str, model_name: str, debug: bool = False)
 
     # ========== A) Structured output (strict) ==========
     try:
-        # Some LangChain versions support strict/include_raw; if not, this block will raise
         llm_struct = base_llm.with_structured_output(
             CleanedTranscript,
             strict=True,
@@ -174,7 +163,6 @@ def correct_prompt_with_llm(raw_text: str, model_name: str, debug: bool = False)
              "5) If the input is a query, output a well-formed, concise query.\n"
              "Return a JSON object that matches the required schema."
             ),
-            # Few-shot examples help steer behavior
             ("human", "Input: 'uh what countries are in the eea coverage like green card?'\n"
                       "Output (corrected, same language): 'Which countries are included in the EEA Green Card coverage?'"),
             ("human", "Input: 'Hol ervenyes a zoldkartya uh naaa?'\n"
@@ -183,8 +171,6 @@ def correct_prompt_with_llm(raw_text: str, model_name: str, debug: bool = False)
         ])
 
         resultA = (promptA | llm_struct).invoke({"utterance": raw_text})
-
-        # When include_raw=True, many models return {'parsed': CleanedTranscript(...), 'raw': ...}
         parsed = None
         if isinstance(resultA, dict) and "parsed" in resultA:
             parsed = resultA["parsed"]
@@ -261,22 +247,15 @@ def display_chat_interface():
         st.session_state.model = DEFAULT_MODEL
     if "audio_enabled" not in st.session_state:
         st.session_state.audio_enabled = TTS_ENABLED
-
-    # ---- Render history ----
     for m in st.session_state.messages:
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
-
-    # ---- Initialize variables ----
     prompt = None
     raw_transcript = None
     corrected_transcript = None
-
-    # ---- Voice input + Audio toggle in a compact layout ----
     col1, col2 = st.columns([0.1, 0.9])
     
     with col1:
-        # Voice input popover
         with st.popover("🎙️", use_container_width=False):
             st.caption("Record your message")
             audio_value = audio_input_compat("Press to record", key="voice_input")
@@ -287,15 +266,12 @@ def display_chat_interface():
                     st.audio(audio_value)
     
     with col2:
-        # Audio output toggle
         audio_toggle = st.checkbox(
             "🔊 Enable audio responses",
             value=st.session_state.audio_enabled,
             key="audio_toggle"
         )
         st.session_state.audio_enabled = audio_toggle
-
-    # ---- Process audio ----
     if audio_value is not None:
         with st.spinner("🎙️ Processing audio..."):
             raw_transcript = transcribe_audio_value(audio_value, language=ASR_LANG)
@@ -311,22 +287,18 @@ def display_chat_interface():
                 prompt = corrected_transcript
             else:
                 prompt = raw_transcript
-
-    # ---- Text input ----
     text_input = st.chat_input("Type your query here")
     if text_input:
         prompt = text_input
         raw_transcript = None
         corrected_transcript = None
-
-    # ---- Call backend ----
     if prompt:
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
         with st.spinner("Generating response..."):
-            WINDOW_MESSAGES = 6  # 3 user+assistant turns
+            WINDOW_MESSAGES = 6  
             history_payload = [
                 {"role": m["role"], "content": m["content"]}
                 for m in st.session_state.messages[-WINDOW_MESSAGES:]
@@ -336,7 +308,7 @@ def display_chat_interface():
                 prompt,
                 st.session_state.session_id,
                 model=st.session_state.model,
-                history=history_payload,   # omit this if your server stores history by session_id
+                history=history_payload,   
             )
 
 
@@ -347,8 +319,6 @@ def display_chat_interface():
 
             with st.chat_message("assistant"):
                 st.markdown(answer)
-                
-                # ---- Generate and play audio response ----
                 if st.session_state.audio_enabled and answer:
                     with st.spinner("🔊 Generating audio..."):
                         audio_bytes = text_to_speech(answer, lang=TTS_LANG)

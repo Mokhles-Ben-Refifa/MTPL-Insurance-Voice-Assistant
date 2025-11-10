@@ -32,30 +32,32 @@ from sentence_transformers import CrossEncoder
 
 # Your dense vector store (Chroma)
 from src.chroma_utils import vectorstore
+from langfuse.langchain import CallbackHandler  
+langfuse_handler = CallbackHandler()
 
-# ----------------------------------
+
 # Logging
-# ----------------------------------
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# ----------------------------------
+
 # Env / keys
-# ----------------------------------
+
 load_dotenv()
 GOOGLE_API_KEY = os.getenv("GEMINI_API_KEY")
 if not GOOGLE_API_KEY:
     raise ValueError("GEMINI_API_KEY not found in environment variables.")
 
-# ----------------------------------
+
 # Retrieval knobs (env-tunable)
-# ----------------------------------
+
 RETRIEVER_K = int(os.getenv("RETRIEVER_K", "6"))
 RETRIEVER_FETCH_K = int(os.getenv("RETRIEVER_FETCH_K", "40"))
-RETRIEVER_LAMBDA = float(os.getenv("RETRIEVER_LAMBDA", "0.5"))  # 0 = more diverse (MMR)
-SEARCH_TYPE = os.getenv("RETRIEVER_SEARCH_TYPE", "mmr")         # "mmr" or "similarity"
+RETRIEVER_LAMBDA = float(os.getenv("RETRIEVER_LAMBDA", "0.5")) 
+SEARCH_TYPE = os.getenv("RETRIEVER_SEARCH_TYPE", "mmr")         
 
-RETRIEVER_MODE = os.getenv("RETRIEVER_MODE", "dense").lower()   # "dense" | "bm25" | "hybrid"
+RETRIEVER_MODE = os.getenv("RETRIEVER_MODE", "dense").lower()   
 HYBRID_DENSE_WEIGHT = float(os.getenv("HYBRID_DENSE_WEIGHT", "0.55"))
 BM25_MAX_DOCS = int(os.getenv("BM25_MAX_DOCS", "5000"))
 
@@ -64,12 +66,12 @@ RERANKER_ENABLED = os.getenv("RERANKER_ENABLED", "1").strip().lower() not in {"0
 RERANKER_MODEL = os.getenv("RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")
 RERANKER_TOP_N = int(os.getenv("RERANKER_TOP_N", str(RETRIEVER_K)))
 
-# Optional: restrict dense results by filename to cut GDPR/CASCO noise
-_DENSE_FILE_FILTER = os.getenv("DENSE_FILENAME_FILTER")  # e.g. "temp_mtpl_coverage (1).pdf,user_terms_conditions (1).pdf"
 
-# ----------------------------------
+_DENSE_FILE_FILTER = os.getenv("DENSE_FILENAME_FILTER") 
+
+
 # Dense retriever (Chroma)
-# ----------------------------------
+
 _dense_kwargs = {"k": RETRIEVER_K, "fetch_k": RETRIEVER_FETCH_K, "lambda_mult": RETRIEVER_LAMBDA}
 if _DENSE_FILE_FILTER:
     allowed = [x.strip() for x in _DENSE_FILE_FILTER.split(",") if x.strip()]
@@ -81,9 +83,9 @@ dense_retriever = vectorstore.as_retriever(
     search_kwargs=_dense_kwargs,
 )
 
-# ----------------------------------
+
 # BM25 builder (accent-insensitive)
-# ----------------------------------
+
 _BM25: Optional[BM25Retriever] = None
 
 def _fold_accents(text: str) -> str:
@@ -92,7 +94,7 @@ def _fold_accents(text: str) -> str:
     return "".join(ch for ch in text if not unicodedata.combining(ch))
 
 def _bm25_tokenize(text: str) -> List[str]:
-    # Lowercase + accent-fold + alnum tokens
+    
     t = _fold_accents(text).lower()
     return re.findall(r"[a-z0-9]+", t)
 
@@ -124,9 +126,9 @@ def _build_bm25_from_chroma(limit: Optional[int] = None) -> Optional[BM25Retriev
 if RETRIEVER_MODE in {"bm25", "hybrid"}:
     _BM25 = _build_bm25_from_chroma(limit=BM25_MAX_DOCS)
 
-# ----------------------------------
+
 # Bilingual query expansion
-# ----------------------------------
+
 def expand_query(q: str) -> str:
     """
     Lightweight bilingual expansion for your domain so English questions
@@ -134,7 +136,7 @@ def expand_query(q: str) -> str:
     """
     ql = q.lower()
     extras: List[str] = []
-    # Heuristics specific to your MTPL/Green Card use-case:
+    
     if "country" in ql or "valid" in ql:
         extras += ["Hol érvényes a biztosításom?", "Európai Gazdasági Térség", "Svájc", "Zöldkártya"]
     if "green card" in ql:
@@ -142,18 +144,18 @@ def expand_query(q: str) -> str:
     if "eea" in ql or "european economic area" in ql:
         extras += ["Európai Gazdasági Térség"]
 
-    # Also include folded (unaccented) variants for BM25
+    #
     folded = [_fold_accents(t) for t in extras]
-    # Return a single combined "bag" so BM25 sees all hints
+    
     return " ".join([q] + extras + folded)
 
-# ----------------------------------
+
 # Expanding retriever wrapper (Pydantic-compliant)
-# ----------------------------------
+
 class ExpandingRetriever(BaseRetriever):
     """Wrap any retriever to expand user query prior to retrieval (sync + async)."""
 
-    # Declare fields so Pydantic knows them
+    
     inner: BaseRetriever = Field(...)
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -164,10 +166,10 @@ class ExpandingRetriever(BaseRetriever):
         run_manager: CallbackManagerForRetrieverRun,
     ) -> List[Document]:
         qx = expand_query(query)
-        # Prefer LC 0.3 invoke path
+        
         if hasattr(self.inner, "invoke"):
             return self.inner.invoke(qx)
-        # Back-compat
+        
         return self.inner.get_relevant_documents(qx)
 
     async def _aget_relevant_documents(
@@ -181,17 +183,17 @@ class ExpandingRetriever(BaseRetriever):
             return await self.inner.ainvoke(qx)
         return await self.inner.aget_relevant_documents(qx)
 
-# ----------------------------------
+
 # Optional Cross-Encoder Rerank (implemented as a retriever wrapper to avoid missing LC imports)
-# ----------------------------------
+
 class CrossEncoderRerankRetriever(BaseRetriever):
     """
     Wrap a retriever, then rerank its results with a sentence-transformers CrossEncoder.
     Keeps the top_n most relevant documents.
     """
     inner: BaseRetriever = Field(...)
-    ce: Any = Field(...)                     # CrossEncoder instance
-    top_n: int = Field(default=RETRIEVER_K)  # how many to keep
+    ce: Any = Field(...)                     
+    top_n: int = Field(default=RETRIEVER_K) 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def _get_relevant_documents(
@@ -218,12 +220,11 @@ class CrossEncoderRerankRetriever(BaseRetriever):
         *,
         run_manager: CallbackManagerForRetrieverRun,
     ) -> List[Document]:
-        # Async: call sync CE predict (CPU/GPU) is fine; or implement aio if needed
         return self._get_relevant_documents(query, run_manager=run_manager)
 
-# ----------------------------------
+
 # Choose active retriever (dense / bm25 / hybrid), then wrap with Expanding + optional Rerank
-# ----------------------------------
+
 def _make_base_retriever() -> BaseRetriever:
     if RETRIEVER_MODE == "bm25" and _BM25:
         logger.info("[retriever] Using BM25 only.")
@@ -241,20 +242,20 @@ def _make_base_retriever() -> BaseRetriever:
     return dense_retriever
 
 _base = _make_base_retriever()
-active_retriever: BaseRetriever = ExpandingRetriever(inner=_base)  # bilingual-aware
+active_retriever: BaseRetriever = ExpandingRetriever(inner=_base)  
 
 # Optional: add reranker on top
 if RERANKER_ENABLED:
     try:
-        _ce = CrossEncoder(RERANKER_MODEL)  # CPU is fine for MiniLM; uses CUDA if available
+        _ce = CrossEncoder(RERANKER_MODEL)  
         active_retriever = CrossEncoderRerankRetriever(inner=active_retriever, ce=_ce, top_n=RERANKER_TOP_N)
         logger.info("[rerank] enabled model=%s top_n=%s", RERANKER_MODEL, RERANKER_TOP_N)
     except Exception as e:
         logger.warning("[rerank] disabled: %s", e)
 
-# ----------------------------------
+
 # Prompts
-# ----------------------------------
+
 output_parser = StrOutputParser()
 
 contextualize_q_system_prompt = os.getenv(
@@ -285,9 +286,9 @@ IMPORTANT INSTRUCTIONS:
     ("human", "{input}")
 ])
 
-# ----------------------------------
+
 # Public: build the full RAG chain
-# ----------------------------------
+
 def get_rag_chain(model: str = "gemini-2.5-flash"):
     llm = ChatGoogleGenerativeAI(
         model=model,
@@ -296,11 +297,16 @@ def get_rag_chain(model: str = "gemini-2.5-flash"):
     )
     history_aware = create_history_aware_retriever(llm, active_retriever, contextualize_q_prompt)
     qa_chain = create_stuff_documents_chain(llm, qa_prompt)
-    return create_retrieval_chain(history_aware, qa_chain)
+    chain = create_retrieval_chain(history_aware, qa_chain)
 
-# ----------------------------------
+    return chain.with_config({
+        "run_name": "RAG QA Chain",
+        "callbacks": [langfuse_handler],
+    })
+
+
 # Debug helpers
-# ----------------------------------
+
 def test_dense_retrieval(query: str, k: int = 10) -> List[Tuple[Document, float]]:
     """Show dense (vector) hits with scores, filenames, and pages."""
     logger.info("[debug/dense] query=%s", query)
