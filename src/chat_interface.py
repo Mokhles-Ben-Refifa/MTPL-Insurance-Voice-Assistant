@@ -68,7 +68,6 @@ def text_to_speech(text: str, lang: str = TTS_LANG) -> bytes | None:
     Returns audio bytes or None on error.
     """
     try:
-
         tts = gTTS(text=text, lang=lang, slow=False)
         with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as fp:
             temp_path = fp.name
@@ -101,7 +100,6 @@ def cheap_cleanup(text: str) -> str:
     text = re.sub(fillers, "", text, flags=re.IGNORECASE)
     text = re.sub(r"\s+", " ", text).strip()
 
-    
     if re.match(r"(?i)^(who|what|when|where|why|how|which|do|does|did|is|are|can|could|should|would|may)\b", text):
         if not text.endswith((".", "?", "!")):
             text += "?"
@@ -247,9 +245,17 @@ def display_chat_interface():
         st.session_state.model = DEFAULT_MODEL
     if "audio_enabled" not in st.session_state:
         st.session_state.audio_enabled = TTS_ENABLED
+    
+    # Display historical messages
     for m in st.session_state.messages:
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
+            # Display audio for historical assistant messages if it was originally enabled
+            if m["role"] == "assistant" and m.get("audio_played", False):
+                audio_bytes = text_to_speech(m["content"], lang=TTS_LANG)
+                if audio_bytes:
+                    st.audio(audio_bytes, format='audio/mp3')  # No autoplay for history
+    
     prompt = None
     raw_transcript = None
     corrected_transcript = None
@@ -272,6 +278,7 @@ def display_chat_interface():
             key="audio_toggle"
         )
         st.session_state.audio_enabled = audio_toggle
+    
     if audio_value is not None:
         with st.spinner("🎙️ Processing audio..."):
             raw_transcript = transcribe_audio_value(audio_value, language=ASR_LANG)
@@ -287,11 +294,13 @@ def display_chat_interface():
                 prompt = corrected_transcript
             else:
                 prompt = raw_transcript
+    
     text_input = st.chat_input("Type your query here")
     if text_input:
         prompt = text_input
         raw_transcript = None
         corrected_transcript = None
+    
     if prompt:
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
@@ -311,23 +320,24 @@ def display_chat_interface():
                 history=history_payload,   
             )
 
-
         if resp:
             st.session_state.session_id = resp.get("session_id")
             answer = resp.get("answer", "")
-            st.session_state.messages.append({"role": "assistant", "content": answer})
+            
+            # Store message with audio flag
+            st.session_state.messages.append({
+                "role": "assistant", 
+                "content": answer,
+                "audio_played": st.session_state.audio_enabled
+            })
 
             with st.chat_message("assistant"):
                 st.markdown(answer)
+                # Only play audio for NEW messages if enabled
                 if st.session_state.audio_enabled and answer:
                     with st.spinner("🔊 Generating audio..."):
                         audio_bytes = text_to_speech(answer, lang=TTS_LANG)
                         if audio_bytes:
                             st.audio(audio_bytes, format='audio/mp3', autoplay=True)
-
-                
-                if st.session_state.audio_enabled:
-                    st.subheader("Audio Output")
-                    st.caption("✓ Audio response enabled")
         else:
             st.error("Failed to get a response from the API.")
