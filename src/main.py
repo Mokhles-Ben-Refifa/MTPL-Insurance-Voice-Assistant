@@ -1,9 +1,8 @@
-# src/main.py
 import os
 from dotenv import load_dotenv, find_dotenv
 
-# --- Load env BEFORE any imports that touch LangChain/Chroma ---
-os.environ.setdefault("ANONYMIZED_TELEMETRY", "false")  # silence Chroma noise
+
+os.environ.setdefault("ANONYMIZED_TELEMETRY", "false") 
 load_dotenv(find_dotenv(), override=True)
 
 import uuid
@@ -21,7 +20,7 @@ from src.chroma_utils import index_document_to_chroma, delete_doc_from_chroma, v
 
 # Optional: check BM25 availability for /whoami
 try:
-    import rank_bm25  # noqa: F401
+    import rank_bm25  
     _bm25_available = True
 except Exception:
     _bm25_available = False
@@ -30,13 +29,13 @@ except Exception:
 logging.basicConfig(filename="app.log", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Import AFTER env is loaded so retriever builds with the right mode (dense/bm25/hybrid)
+
 from src.langchain_utils import get_rag_chain  # noqa: E402
 
 app = FastAPI()
 
 
-# Cache chains per model so we don't rebuild on every request
+
 @lru_cache(maxsize=4)
 def _get_chain_cached(model: str):
     logger.info(f"[boot] Building RAG chain for model={model}")
