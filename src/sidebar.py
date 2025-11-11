@@ -323,7 +323,7 @@ def _render_chat_list() -> None:
             if title.startswith(prefix):
                 title = title[len(prefix):].strip()
                 break
-        title = title or "💬 Chat"
+        title = title or "💬"
 
         preview = (s.get("last_message") or "").strip()
         if len(preview) > 65:
